@@ -9,10 +9,25 @@ description = "Agent spending guardrails: capability-gated budget tokens with at
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
+keywords = ["ai-agents", "payments", "spending-controls", "audit-trail", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "pyjwt[crypto]>=2.8",
     "cryptography>=42",
 ]
+
+[project.urls]
+Homepage = "https://github.com/alpibrusl/lex-guard"
+Repository = "https://github.com/alpibrusl/lex-guard"
+Issues = "https://github.com/alpibrusl/lex-guard/issues"
 
 [project.optional-dependencies]
 stripe = ["stripe>=8"]
