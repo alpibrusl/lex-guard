@@ -49,6 +49,40 @@ def load_token_unsafe(raw: str) -> BudgetToken:
     return BudgetToken(raw=raw, policy=_claims_to_policy(claims))
 
 
+def build_test_token(
+    agent_id: str = "test-agent",
+    currency: str = "EUR",
+    cap_total: str = "0",
+    cap_per_day: str = "0",
+    cap_per_transaction: str = "0",
+    merchants_allow: Optional[list[str]] = None,
+    categories_allow: Optional[list[str]] = None,
+    max_tx_per_hour: int = 0,
+    require_memo: bool = False,
+    ttl_seconds: int = 3600,
+) -> BudgetToken:
+    """Build a self-signed test token without a control plane.
+
+    Uses an ephemeral HS256 secret — never use in production.
+    """
+    import uuid, hmac as _hmac, hashlib as _hashlib
+    secret = _hashlib.sha256(b"lex-guard-test-secret").digest()
+    claims = {
+        "jti": "tok_" + uuid.uuid4().hex[:8],
+        "agent_id": agent_id,
+        "currency": currency,
+        "caps": {"total": cap_total, "per_day": cap_per_day, "per_transaction": cap_per_transaction},
+        "merchants": {"allow": merchants_allow or []},
+        "categories": {"allow": categories_allow or []},
+        "velocity": {"max_tx_per_hour": max_tx_per_hour},
+        "exp": int(time.time()) + ttl_seconds,
+        "require_memo": require_memo,
+        "policy_version": 1,
+    }
+    raw = jwt.encode(claims, secret, algorithm="HS256")
+    return load_token(raw, secret, algorithms=["HS256"])
+
+
 def _claims_to_policy(c: dict) -> TokenPolicy:
     caps = c.get("caps", {})
     merchants = c.get("merchants", {})

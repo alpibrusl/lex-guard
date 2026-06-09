@@ -1,4 +1,4 @@
-from .token import BudgetToken, TokenPolicy, load_token
+from .token import BudgetToken, TokenPolicy, load_token, build_test_token
 from .gate import SpendGate, DeniedError
 from .models import SpendIntent, SpendOutcome
 from .trail import TrailWriter
@@ -8,6 +8,7 @@ __all__ = [
     "BudgetToken",
     "TokenPolicy",
     "load_token",
+    "build_test_token",
     "SpendGate",
     "SpendIntent",
     "SpendOutcome",

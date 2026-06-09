@@ -37,6 +37,7 @@ class SpendGate:
         self._token = token
         self._trail = trail
         self._executor = executor
+        self.trail = trail      # public read access for auditing
 
     def spend(self, intent: SpendIntent) -> SpendOutcome:
         """Evaluate intent, execute if approved, return outcome.
