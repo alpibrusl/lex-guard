@@ -31,12 +31,16 @@ Issues = "https://github.com/alpibrusl/lex-guard/issues"
 
 [project.optional-dependencies]
 stripe = ["stripe>=8"]
+mcp = ["mcp>=1.2"]
 dev = [
     "pytest>=8",
     "pytest-cov",
     "hypothesis>=6",
     "freezegun",
 ]
+
+[project.scripts]
+lex-guard-mcp = "lex_guard.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lex_guard"]
