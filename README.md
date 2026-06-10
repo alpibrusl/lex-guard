@@ -153,7 +153,7 @@ def handle_tool_call(gate: SpendGate, tool_input: dict) -> str:
 # result = handle_tool_call(gate, tool_use_block.input)
 ```
 
-### OpenAI / Codex (function calling)
+### OpenAI / Codex (tool calling)
 
 ```python
 from openai import OpenAI
@@ -163,25 +163,28 @@ import json
 
 client = OpenAI()
 
-functions = [
+tools = [
     {
-        "name": "authorize_spend",
-        "description": "Authorize a payment before calling a paid API or service.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "merchant":   {"type": "string"},
-                "amount_eur": {"type": "number"},
-                "category":   {"type": "string", "enum": ["saas", "cloud", "data", "media", "marketplace", "other"]},
-                "memo":       {"type": "string"},
+        "type": "function",
+        "function": {
+            "name": "authorize_spend",
+            "description": "Authorize a payment before calling a paid API or service.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "merchant":   {"type": "string"},
+                    "amount_eur": {"type": "number"},
+                    "category":   {"type": "string", "enum": ["saas", "cloud", "data", "media", "marketplace", "other"]},
+                    "memo":       {"type": "string"},
+                },
+                "required": ["merchant", "amount_eur", "category", "memo"],
             },
-            "required": ["merchant", "amount_eur", "category", "memo"],
         },
     }
 ]
 
-def handle_function_call(gate: SpendGate, function_call) -> str:
-    args = json.loads(function_call.arguments)
+def handle_tool_call(gate: SpendGate, tool_call) -> str:
+    args = json.loads(tool_call.function.arguments)
     try:
         outcome = gate.spend(SpendIntent(
             merchant=args["merchant"],
@@ -193,12 +196,16 @@ def handle_function_call(gate: SpendGate, function_call) -> str:
         return json.dumps({"approved": True, "ref": outcome.executor_ref})
     except DeniedError as e:
         return json.dumps({"approved": False, "reason": e.reason})
+
+# In your agent loop, when the model returns tool_calls:
+# for tc in response.choices[0].message.tool_calls:
+#     result = handle_tool_call(gate, tc)
 ```
 
 ### LangChain
 
 ```python
-from langchain.tools import tool
+from langchain_core.tools import tool
 from decimal import Decimal
 from lex_guard import SpendGate, SpendIntent, DeniedError
 
