@@ -1,5 +1,9 @@
 # lex-guard
 
+[![CI](https://github.com/alpibrusl/lex-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/alpibrusl/lex-guard/actions/workflows/ci.yml)
+
+**Part of the [Lex](https://lexlang.org) project** — Agents · [Manifesto](https://lexlang.org/manifesto) · [All packages](https://lexlang.org)
+
 Your AI agent gets an allowance, not your card — and you can prove what it spent.
 
 lex-guard wraps any payment method behind a **budget token**: a signed policy that caps what an agent can spend (per transaction, per day, per merchant, total). The SDK enforces the policy in-process before any charge is attempted, and writes an attestation trail — `spend.intent` before, `spend.outcome` after — so you can audit every decision.
