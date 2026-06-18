@@ -53,3 +53,4 @@ fn make(resource_url :: Str, signer :: solana.Signer) -> (models.SpendIntent) ->
 fn nonce_for(intent :: models.SpendIntent) -> Str {
   crypto.sha256_str(str.concat(intent.merchant, str.concat("|", str.concat(int.to_str(intent.amount), str.concat("|", intent.memo)))))
 }
+
