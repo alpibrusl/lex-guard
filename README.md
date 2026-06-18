@@ -39,7 +39,7 @@ Python AI agents reach the gate over **MCP** (`lex-mcp` stdio) — no Python pac
 - **`policy`** — compile the stateless policy to a `lex-spec` Spec (so it's property-checkable and SMT-exportable).
 - **`gate`** — the hot path: attest → stateless check → stateful caps → execute → attest.
 - **`skill`** — the `authorize_spend` lex-agent Skill; `make_agent` builds the served agent.
-- **`executor`** / **`http_exec`** — pluggable executors; `mock` for tests, `http_exec.make(url, token, id_field)` for a real payment endpoint (Stripe Issuing is `make(stripe_url, api_key, "id")`).
+- **`executor`** / **`http_exec`** / **`x402_exec`** — pluggable executors; `mock` for tests, `http_exec.make(url, token, id_field)` for a real payment endpoint (Stripe Issuing is `make(stripe_url, api_key, "id")`), and `x402_exec.make(resource_url, signer)` to settle an approved spend over the [x402](https://www.x402.org/) `402 Payment Required` handshake (protocol in [lex-x402](https://github.com/alpibrusl/lex-x402)), returning the on-chain tx hash as the spend reference.
 - **`money`** — minor-unit ↔ typed Money + human formatting.
 - **`main`** — the MCP server entry (`lex run src/main.lex main`).
 
@@ -53,6 +53,7 @@ Python AI agents reach the gate over **MCP** (`lex-mcp` stdio) — no Python pac
 
 - **AP2 ([ap2-protocol.org](https://ap2-protocol.org)) interop** via [lex-jose](https://github.com/alpibrusl/lex-jose): consume Intent/Cart Mandates → `Policy`; later mint SD-JWT mandates once `std.crypto` P-256 / ES256 ships in a release. See [docs/design/python-to-lex.md](docs/design/python-to-lex.md).
 - **exp / nbf** enforcement on the budget token.
+- **x402 EVM (`exact` / EIP-3009) settlement** via [lex-x402](https://github.com/alpibrusl/lex-x402), once `keccak256` + `secp256k1` ship in `std.crypto` ([lex-lang #655](https://github.com/alpibrusl/lex-lang/issues/655)). The Solana (ed25519) path works today through `x402_exec`.
 
 ## Develop
 
