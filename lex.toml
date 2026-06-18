@@ -1,0 +1,15 @@
+[package]
+name        = "lex-guard"
+version     = "0.2.0"
+lex         = "0.9.10"
+description = "Agent spending guardrails: capability-gated budget tokens with attestation trail."
+license     = "EUPL-1.2"
+
+[dependencies]
+lex-schema = { git = "https://github.com/alpibrusl/lex-schema" }
+lex-spec   = { git = "https://github.com/alpibrusl/lex-spec" }
+lex-agent  = { git = "https://github.com/alpibrusl/lex-agent" }
+lex-mcp    = { git = "https://github.com/alpibrusl/lex-mcp" }
+lex-money  = { git = "https://github.com/alpibrusl/lex-money" }
+lex-trail  = { git = "https://github.com/alpibrusl/lex-trail" }
+lex-crypto = { git = "https://github.com/alpibrusl/lex-crypto" }
