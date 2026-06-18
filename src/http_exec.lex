@@ -39,7 +39,14 @@ fn make(url :: Str, token :: Str, id_field :: Str) -> (models.SpendIntent) -> [n
     } else {
       http.with_auth(req1, "Bearer", token)
     }
-    match http.send(req2) {
+    # Forward the client-supplied idempotency key so a retried charge is deduped
+    # by the payment backend (Stripe et al. honour the Idempotency-Key header).
+    let req3 := if intent.idempotency_key == "" {
+      req2
+    } else {
+      http.with_header(req2, "Idempotency-Key", intent.idempotency_key)
+    }
+    match http.send(req3) {
       Err(_) => Err("payment request failed"),
       Ok(resp) => if resp.status >= 200 and resp.status < 300 {
         match http.text_body(resp) {

@@ -23,11 +23,11 @@ fn seed() -> Bytes {
 }
 
 fn sample_policy() -> models.Policy {
-  { token_id: "tok_test01", agent_id: "research-agent", currency: "EUR", cap_total: 20000, cap_per_day: 5000, cap_per_transaction: 2500, merchants_allow: ["api.openai.com", "aws.amazon.com"], categories_allow: ["saas", "cloud"], max_tx_per_hour: 0, expires_at: 0, require_memo: true, policy_version: 1 }
+  { token_id: "tok_test01", agent_id: "research-agent", currency: "EUR", cap_total: 20000, cap_per_day: 5000, cap_per_transaction: 2500, merchants_allow: ["api.openai.com", "aws.amazon.com"], categories_allow: ["saas", "cloud"], max_tx_per_hour: 0, expires_at: 0, not_before: 0, require_memo: true, policy_version: 1 }
 }
 
 fn intent(merchant :: Str, amount :: Int, currency :: Str, category :: Str, memo :: Str) -> models.SpendIntent {
-  { merchant: merchant, amount: amount, currency: currency, category: category, memo: memo }
+  { merchant: merchant, amount: amount, currency: currency, category: category, memo: memo, idempotency_key: "" }
 }
 
 fn expect_deny(label :: Str, i :: models.SpendIntent) -> Result[Unit, Str] {

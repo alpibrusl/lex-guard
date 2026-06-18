@@ -31,7 +31,7 @@ import "./models" as models
 import "./policy" as policy
 
 # Payloads we write to the trail (and parse back, for history caps).
-type IntentPayload = { token_id :: Str, merchant :: Str, amount :: Int, currency :: Str, category :: Str, memo :: Str }
+type IntentPayload = { token_id :: Str, merchant :: Str, amount :: Int, currency :: Str, category :: Str, memo :: Str, idempotency_key :: Str }
 
 type DenialPayload = { merchant :: Str, amount :: Int, reason :: Str }
 
@@ -58,16 +58,35 @@ fn spend(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendIntent) ->
 }
 
 fn after_intent(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendIntent) -> [net] Result[Str, Str], intent :: models.SpendIntent, parent_id :: Str) -> [sql, time, net] Result[models.SpendOutcome, Str] {
-  match policy.check_stateless(pol, intent) {
-    Deny(reason) => deny(log, parent_id, intent, reason),
-    Inconclusive(why) => deny(log, parent_id, intent, str.concat("inconclusive: ", why)),
-    Allow => match history_denial(pol, log, intent) {
-      Err(e) => Err(e),
-      Ok(maybe_reason) => match maybe_reason {
-        Some(reason) => deny(log, parent_id, intent, reason),
-        None => execute_and_record(log, exec, intent, parent_id),
+  # Token validity window is enforced FIRST — an expired or not-yet-valid token
+  # is denied before any policy/cap evaluation, and the denial is attested.
+  match time_denial(pol) {
+    Some(reason) => deny(log, parent_id, intent, reason),
+    None => match policy.check_stateless(pol, intent) {
+      Deny(reason) => deny(log, parent_id, intent, reason),
+      Inconclusive(why) => deny(log, parent_id, intent, str.concat("inconclusive: ", why)),
+      Allow => match history_denial(pol, log, intent) {
+        Err(e) => Err(e),
+        Ok(maybe_reason) => match maybe_reason {
+          Some(reason) => deny(log, parent_id, intent, reason),
+          None => execute_and_record(log, exec, intent, parent_id),
+        },
       },
     },
+  }
+}
+
+# Token validity window (epoch-ms). 0 means "unset" for either bound.
+fn time_denial(pol :: models.Policy) -> [time] Option[Str] {
+  let now := time.now_ms()
+  if pol.expires_at > 0 and now >= pol.expires_at {
+    Some(str.concat("token expired at ", int.to_str(pol.expires_at)))
+  } else {
+    if pol.not_before > 0 and now < pol.not_before {
+      Some(str.concat("token not valid before ", int.to_str(pol.not_before)))
+    } else {
+      None
+    }
   }
 }
 
@@ -82,9 +101,21 @@ fn deny(log :: trail.Log, parent_id :: Str, intent :: models.SpendIntent, reason
 fn execute_and_record(log :: trail.Log, exec :: (models.SpendIntent) -> [net] Result[Str, Str], intent :: models.SpendIntent, parent_id :: Str) -> [sql, time, net] Result[models.SpendOutcome, Str] {
   match exec(intent) {
     Err(e) => Err(str.concat("executor failed: ", e)),
-    Ok(ref) => match trail.append(log, k_outcome(), Some(parent_id), outcome_json(intent, ref)) {
-      Err(e) => Err(str.concat("trail write failed (outcome): ", e)),
+    Ok(ref) => record_outcome(log, intent, ref, parent_id),
+  }
+}
+
+# The charge already succeeded — record it. A charge with no recorded outcome is
+# the dangerous state (money moved, no trail), so we retry the write once and, if
+# it still fails, surface the executor_ref in the error so the charge is
+# recoverable for reconciliation. The intent's idempotency_key makes a full retry
+# of the spend safe (the backend dedupes), so we never silently double-charge.
+fn record_outcome(log :: trail.Log, intent :: models.SpendIntent, ref :: Str, parent_id :: Str) -> [sql, time] Result[models.SpendOutcome, Str] {
+  match trail.append(log, k_outcome(), Some(parent_id), outcome_json(intent, ref)) {
+    Ok(_) => Ok({ intent: intent, approved: true, executor_ref: ref, denial_reason: "" }),
+    Err(_) => match trail.append(log, k_outcome(), Some(parent_id), outcome_json(intent, ref)) {
       Ok(_) => Ok({ intent: intent, approved: true, executor_ref: ref, denial_reason: "" }),
+      Err(e2) => Err(str.join(["CHARGED but outcome unrecorded (executor_ref=", ref, "): ", e2], "")),
     },
   }
 }
@@ -176,7 +207,7 @@ fn outcome_amount(payload_json :: Str) -> Int {
 
 # ---- payload builders --------------------------------------------
 fn intent_json(intent :: models.SpendIntent, token_id :: Str) -> Str {
-  json.stringify(({ token_id: token_id, merchant: intent.merchant, amount: intent.amount, currency: intent.currency, category: intent.category, memo: intent.memo } :: IntentPayload))
+  json.stringify(({ token_id: token_id, merchant: intent.merchant, amount: intent.amount, currency: intent.currency, category: intent.category, memo: intent.memo, idempotency_key: intent.idempotency_key } :: IntentPayload))
 }
 
 fn denial_json(intent :: models.SpendIntent, reason :: Str) -> Str {
