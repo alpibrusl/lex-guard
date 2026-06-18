@@ -13,3 +13,4 @@ lex-mcp    = { git = "https://github.com/alpibrusl/lex-mcp" }
 lex-money  = { git = "https://github.com/alpibrusl/lex-money" }
 lex-trail  = { git = "https://github.com/alpibrusl/lex-trail" }
 lex-crypto = { git = "https://github.com/alpibrusl/lex-crypto" }
+lex-x402   = { git = "https://github.com/alpibrusl/lex-x402" }
