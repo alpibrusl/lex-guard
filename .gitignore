@@ -1,9 +1,5 @@
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-dist/
-build/
-.venv/
-.pytest_cache/
-*.egg
+# Lex toolchain internal directory
+.cli/
+
+# local trail db created by `lex run src/main.lex`
+*.db
