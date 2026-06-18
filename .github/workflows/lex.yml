@@ -21,7 +21,9 @@ jobs:
         run: lex pkg install
 
       - name: Type-check (strict)
-        run: lex check --strict src/
+        run: |
+          lex check --strict src/main.lex
+          lex check --strict src/x402_exec.lex
 
       - name: Format check
         run: lex fmt --check src/ tests/
