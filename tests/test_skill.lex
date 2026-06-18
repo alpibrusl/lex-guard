@@ -22,7 +22,7 @@ import "../src/skill" as skill
 import "../src/executor" as executor
 
 fn policy() -> models.Policy {
-  { token_id: "tok_skill", agent_id: "agent", currency: "EUR", cap_total: 0, cap_per_day: 0, cap_per_transaction: 2500, merchants_allow: ["api.openai.com"], categories_allow: ["saas"], max_tx_per_hour: 0, expires_at: 0, require_memo: false, policy_version: 1 }
+  { token_id: "tok_skill", agent_id: "agent", currency: "EUR", cap_total: 0, cap_per_day: 0, cap_per_transaction: 2500, merchants_allow: ["api.openai.com"], categories_allow: ["saas"], max_tx_per_hour: 0, expires_at: 0, not_before: 0, require_memo: false, policy_version: 1 }
 }
 
 fn intent_msg(merchant :: Str, amount :: Int) -> msg.Message {

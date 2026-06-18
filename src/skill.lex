@@ -64,7 +64,7 @@ fn build_intent(j :: jv.Json) -> Result[models.SpendIntent, Str] {
         Err(e) => Err(e),
         Ok(currency) => match field_str(j, "category") {
           Err(e) => Err(e),
-          Ok(category) => Ok({ merchant: merchant, amount: amount, currency: currency, category: category, memo: opt_str(j, "memo") }),
+          Ok(category) => Ok({ merchant: merchant, amount: amount, currency: currency, category: category, memo: opt_str(j, "memo"), idempotency_key: opt_str(j, "idempotency_key") }),
         },
       },
     },

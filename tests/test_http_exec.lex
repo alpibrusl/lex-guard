@@ -12,7 +12,7 @@ import "../src/models" as models
 import "../src/http_exec" as http_exec
 
 fn intent() -> models.SpendIntent {
-  { merchant: "api.openai.com", amount: 4200, currency: "EUR", category: "saas", memo: "embeddings" }
+  { merchant: "api.openai.com", amount: 4200, currency: "EUR", category: "saas", memo: "embeddings", idempotency_key: "idem-abc123" }
 }
 
 fn extract_id_ok() -> Result[Unit, Str] {
