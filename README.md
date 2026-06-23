@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/alpibrusl/lex-guard/actions/workflows/lex.yml/badge.svg)](https://github.com/alpibrusl/lex-guard/actions/workflows/lex.yml)
 
-**Part of the [Lex](https://lexlang.org) project** — [Manifesto](https://www.alpibru.com/manifesto) · [All packages](https://lexlang.org)
+**Part of the [Lex](https://lexlang.org) project** — [Manifesto](https://www.lexlang.org/manifesto) · [All packages](https://lexlang.org)
 
 Agent spending guardrails: **capability-gated budget tokens with an attestation trail.** Your AI agent gets an allowance, not your card — and you can prove what it spent.
 
