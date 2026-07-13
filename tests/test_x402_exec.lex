@@ -57,7 +57,7 @@ fn other_intent() -> models.SpendIntent {
 }
 
 fn requirement() -> types.Requirements {
-  { scheme: "exact", network: network.solana_mainnet(), max_amount_required: "4200", resource: "https://api.openai.com/v1/embeddings", description: "embeddings", mime_type: "application/json", pay_to: "MerchantSoLAddr2222222222222222222222222222", max_timeout_seconds: 60, asset: "EPjFWdd5USDCmintxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }
+  { scheme: "exact", network: network.solana_mainnet(), max_amount_required: "4200", resource: "https://api.openai.com/v1/embeddings", description: "embeddings", mime_type: "application/json", pay_to: "MerchantSoLAddr2222222222222222222222222222", max_timeout_seconds: 60, asset: "EPjFWdd5USDCmintxxxxxxxxxxxxxxxxxxxxxxxxxxxx", fee_payer: "" }
 }
 
 # The per-intent nonce is deterministic and distinguishes distinct spends.
