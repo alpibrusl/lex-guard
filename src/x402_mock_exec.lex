@@ -33,7 +33,7 @@ import "./x402_exec" as x402_exec
 # The mock facilitator's 402 challenge for this intent: an `exact`/Solana
 # requirement to pay `amount` of `asset` (USDC mint) to the merchant's address.
 fn requirement_for(intent :: models.SpendIntent, pay_to :: Str, asset :: Str) -> types.Requirements {
-  { scheme: "exact", network: network.solana_mainnet(), max_amount_required: int.to_str(intent.amount), resource: str.concat("https://", intent.merchant), description: intent.memo, mime_type: "application/json", pay_to: pay_to, max_timeout_seconds: 60, asset: asset }
+  { scheme: "exact", network: network.solana_mainnet(), max_amount_required: int.to_str(intent.amount), resource: str.concat("https://", intent.merchant), description: intent.memo, mime_type: "application/json", pay_to: pay_to, max_timeout_seconds: 60, asset: asset, fee_payer: "" }
 }
 
 # A deterministic, realistic-looking Solana settlement signature (base58) — the

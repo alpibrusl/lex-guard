@@ -41,7 +41,7 @@ fn far_future() -> Int
 # settlement reference unchanged.
 fn make(resource_url :: Str, signer :: solana.Signer) -> (models.SpendIntent) -> [net] Result[Str, Str] {
   fn (intent :: models.SpendIntent) -> [net] Result[Str, Str] {
-    x402.pay({ resource_url: resource_url, signer: signer, nonce: nonce_for(intent), valid_after: 0, valid_before: far_future() })
+    x402.pay({ resource_url: resource_url, signer: signer, nonce: nonce_for(intent), valid_after: 0, valid_before: far_future(), svm_rpc_url: "" })
   }
 }
 
