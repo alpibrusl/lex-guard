@@ -26,7 +26,7 @@ fn policy() -> models.Policy {
 }
 
 fn intent_msg(merchant :: Str, amount :: Int) -> msg.Message {
-  { message_id: "m1", role: RoleUser, parts: [DataPart(JObj([("merchant", JStr(merchant)), ("amount", JInt(amount)), ("currency", JStr("EUR")), ("category", JStr("saas")), ("memo", JStr("call"))]))] }
+  { message_id: "m1", role: RoleUser, parts: [DataPart(JObj([("merchant", JStr(merchant)), ("amount", JInt(amount)), ("currency", JStr("EUR")), ("category", JStr("saas")), ("memo", JStr("call"))]))], context_id: "" }
 }
 
 fn reply_text(o :: srv.HandlerOutcome) -> Str {
@@ -74,7 +74,7 @@ fn handler_rejects_bad_request() -> [sql, fs_write, time, net] Result[Unit, Str]
   match trail.open_memory() {
     Err(e) => Err(str.concat("open: ", e)),
     Ok(log) => {
-      let bad := { message_id: "m2", role: RoleUser, parts: [DataPart(JObj([("merchant", JStr("api.openai.com"))]))] }
+      let bad := { message_id: "m2", role: RoleUser, parts: [DataPart(JObj([("merchant", JStr("api.openai.com"))]))], context_id: "" }
       let out := skill.handle_spend(policy(), log, executor.mock, bad)
       if is_completed(out) {
         Err("malformed request did not fail")
