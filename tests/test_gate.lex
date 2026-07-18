@@ -110,8 +110,72 @@ fn attests_intent_and_outcome() -> [sql, fs_write, time, net] Result[Unit, Str] 
   }
 }
 
+# Human oversight (Art. 14): a spend below the review threshold still executes.
+fn reviewed_below_threshold_executes() -> [sql, fs_write, time, net] Result[Unit, Str] {
+  match trail.open_memory() {
+    Err(e) => Err(str.concat("open: ", e)),
+    Ok(log) => match gate.spend_reviewed(policy_caps(0, 10000, 0), log, executor.mock, intent(2000), 5000, None) {
+      Err(e) => Err(str.concat("spend: ", e)),
+      Ok(out) => if out.approved {
+        Ok(())
+      } else {
+        Err(str.concat("below-threshold should execute, got: ", out.denial_reason))
+      },
+    },
+  }
+}
+
+# At/above the threshold with NO approval: escalated, executor NOT run.
+fn reviewed_above_threshold_no_approval_escalates() -> [sql, fs_write, time, net] Result[Unit, Str] {
+  match trail.open_memory() {
+    Err(e) => Err(str.concat("open: ", e)),
+    Ok(log) => match gate.spend_reviewed(policy_caps(0, 10000, 0), log, executor.mock, intent(2000), 1000, None) {
+      Err(e) => Err(str.concat("spend: ", e)),
+      Ok(out) => if out.approved {
+        Err("above-threshold spend executed without human approval")
+      } else {
+        if str.is_empty(out.executor_ref) {
+          Ok(())
+        } else {
+          Err("executor ran despite escalation")
+        }
+      },
+    },
+  }
+}
+
+# A valid approval bound to this intent unlocks execution.
+fn reviewed_valid_approval_executes() -> [sql, fs_write, time, net] Result[Unit, Str] {
+  match trail.open_memory() {
+    Err(e) => Err(str.concat("open: ", e)),
+    Ok(log) => match gate.spend_reviewed(policy_caps(0, 10000, 0), log, executor.mock, intent(2000), 1000, Some(({ approver: "ops-lead", decision: "approve", amount: 2000, merchant: "api.openai.com", ref: "sig-1" } :: models.HumanApproval))) {
+      Err(e) => Err(str.concat("spend: ", e)),
+      Ok(out) => if out.approved {
+        Ok(())
+      } else {
+        Err(str.concat("valid approval should execute, got: ", out.denial_reason))
+      },
+    },
+  }
+}
+
+# An approval for a different amount must NOT unlock the spend (anti-replay).
+fn reviewed_wrong_amount_approval_escalates() -> [sql, fs_write, time, net] Result[Unit, Str] {
+  match trail.open_memory() {
+    Err(e) => Err(str.concat("open: ", e)),
+    Ok(log) => match gate.spend_reviewed(policy_caps(0, 10000, 0), log, executor.mock, intent(2000), 1000, Some(({ approver: "ops-lead", decision: "approve", amount: 100, merchant: "api.openai.com", ref: "sig-2" } :: models.HumanApproval))) {
+      Err(e) => Err(str.concat("spend: ", e)),
+      Ok(out) => if out.approved {
+        Err("approval for a different amount unlocked the spend")
+      } else {
+        Ok(())
+      },
+    },
+  }
+}
+
 fn run_all() -> [sql, fs_write, time, net] Unit {
-  let results := [approves_compliant(), denies_over_tx_cap(), enforces_total_cap_across_spends(), enforces_velocity(), attests_intent_and_outcome()]
+  let results := [approves_compliant(), denies_over_tx_cap(), enforces_total_cap_across_spends(), enforces_velocity(), attests_intent_and_outcome(), reviewed_below_threshold_executes(), reviewed_above_threshold_no_approval_escalates(), reviewed_valid_approval_executes(), reviewed_wrong_amount_approval_escalates()]
   let failures := list.fold(results, 0, fn (n :: Int, r :: Result[Unit, Str]) -> Int {
     match r {
       Ok(_) => n,
