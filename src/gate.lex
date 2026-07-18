@@ -37,6 +37,8 @@ type DenialPayload = { merchant :: Str, amount :: Int, reason :: Str }
 
 type OutcomePayload = { amount :: Int, merchant :: Str, approved :: Bool, executor_ref :: Str }
 
+type ApprovalPayload = { approver :: Str, decision :: Str, amount :: Int, merchant :: Str, ref :: Str }
+
 fn k_intent() -> Str {
   "spend.intent"
 }
@@ -47,6 +49,14 @@ fn k_denied() -> Str {
 
 fn k_outcome() -> Str {
   "spend.outcome"
+}
+
+fn k_escalated() -> Str {
+  "spend.escalated"
+}
+
+fn k_approval() -> Str {
+  "spend.approval"
 }
 
 # Evaluate + (if allowed) execute a spend, attesting every step to the trail.
@@ -71,10 +81,65 @@ fn after_intent(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendInt
   }
 }
 
+# Like `spend`, but ENFORCES human oversight (EU AI Act Art. 14). When the intent
+# amount is at/above `review_threshold` (set > 0 to enable), the executor is NOT
+# run unless a valid human approval — bound to this intent's amount + merchant —
+# is supplied; otherwise the spend is escalated (recorded to the trail, never
+# executed). `review_threshold <= 0` disables the human gate (identical to
+# `spend`). The policy caps still apply first; this adds a mandatory human step
+# on top for high-value spends, so an in-cap spend can no longer settle with zero
+# human review.
+fn spend_reviewed(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendIntent) -> [net] Result[Str, Str], intent :: models.SpendIntent, review_threshold :: Int, approval :: Option[models.HumanApproval]) -> [sql, time, net] Result[models.SpendOutcome, Str] {
+  match trail.append(log, k_intent(), None, intent_json(intent, pol.token_id)) {
+    Err(e) => Err(str.concat("trail write failed (intent): ", e)),
+    Ok(iev) => after_intent_reviewed(pol, log, exec, intent, iev.id, review_threshold, approval),
+  }
+}
+
+fn after_intent_reviewed(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendIntent) -> [net] Result[Str, Str], intent :: models.SpendIntent, parent_id :: Str, review_threshold :: Int, approval :: Option[models.HumanApproval]) -> [sql, time, net] Result[models.SpendOutcome, Str] {
+  match policy.check_stateless(pol, intent) {
+    Deny(reason) => deny(log, parent_id, intent, reason),
+    Inconclusive(why) => deny(log, parent_id, intent, str.concat("inconclusive: ", why)),
+    Allow => match history_denial(pol, log, intent) {
+      Err(e) => Err(e),
+      Ok(maybe_reason) => match maybe_reason {
+        Some(reason) => deny(log, parent_id, intent, reason),
+        None => if review_threshold > 0 and intent.amount >= review_threshold {
+          match approval {
+            None => escalate(log, parent_id, intent, "human approval required (amount at/above review threshold)"),
+            Some(a) => if approval_ok(a, intent) {
+              match trail.append(log, k_approval(), Some(parent_id), approval_json(a)) {
+                Err(e) => Err(str.concat("trail write failed (approval): ", e)),
+                Ok(_) => execute_and_record(log, exec, intent, parent_id),
+              }
+            } else {
+              escalate(log, parent_id, intent, "human approval invalid or not bound to this intent")
+            },
+          }
+        } else {
+          execute_and_record(log, exec, intent, parent_id)
+        },
+      },
+    },
+  }
+}
+
+fn approval_ok(a :: models.HumanApproval, intent :: models.SpendIntent) -> Bool {
+  a.decision == "approve" and a.amount == intent.amount and a.merchant == intent.merchant
+}
+
 # ---- denial / execution ------------------------------------------
 fn deny(log :: trail.Log, parent_id :: Str, intent :: models.SpendIntent, reason :: Str) -> [sql, time] Result[models.SpendOutcome, Str] {
   match trail.append(log, k_denied(), Some(parent_id), denial_json(intent, reason)) {
     Err(e) => Err(str.concat("trail write failed (denied): ", e)),
+    Ok(_) => Ok({ intent: intent, approved: false, executor_ref: "", denial_reason: reason }),
+  }
+}
+
+# Policy-allowed but held for a human: recorded to the trail, executor NOT run.
+fn escalate(log :: trail.Log, parent_id :: Str, intent :: models.SpendIntent, reason :: Str) -> [sql, time] Result[models.SpendOutcome, Str] {
+  match trail.append(log, k_escalated(), Some(parent_id), denial_json(intent, reason)) {
+    Err(e) => Err(str.concat("trail write failed (escalated): ", e)),
     Ok(_) => Ok({ intent: intent, approved: false, executor_ref: "", denial_reason: reason }),
   }
 }
@@ -181,6 +246,10 @@ fn intent_json(intent :: models.SpendIntent, token_id :: Str) -> Str {
 
 fn denial_json(intent :: models.SpendIntent, reason :: Str) -> Str {
   json.stringify(({ merchant: intent.merchant, amount: intent.amount, reason: reason } :: DenialPayload))
+}
+
+fn approval_json(a :: models.HumanApproval) -> Str {
+  json.stringify(({ approver: a.approver, decision: a.decision, amount: a.amount, merchant: a.merchant, ref: a.ref } :: ApprovalPayload))
 }
 
 fn outcome_json(intent :: models.SpendIntent, ref :: Str) -> Str {

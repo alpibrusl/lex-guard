@@ -13,3 +13,8 @@ type SpendIntent = { merchant :: Str, amount :: Int, currency :: Str, category :
 # The result of evaluating + (if allowed) executing a spend.
 type SpendOutcome = { intent :: SpendIntent, approved :: Bool, executor_ref :: Str, denial_reason :: Str }
 
+# A human approval decision for a spend, bound to a specific intent (amount +
+# merchant) so a generic approval cannot unlock a different or larger spend.
+# `ref` carries the approver's proof (e.g. a signed human-gateway decision id).
+type HumanApproval = { approver :: Str, decision :: Str, amount :: Int, merchant :: Str, ref :: Str }
+
