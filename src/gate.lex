@@ -30,6 +30,8 @@ import "./models" as models
 
 import "./policy" as policy
 
+import "./release" as release
+
 # Payloads we write to the trail (and parse back, for history caps).
 type IntentPayload = { token_id :: Str, merchant :: Str, amount :: Int, currency :: Str, category :: Str, memo :: Str }
 
@@ -64,6 +66,30 @@ fn spend(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendIntent) ->
   match trail.append(log, k_intent(), None, intent_json(intent, pol.token_id)) {
     Err(e) => Err(str.concat("trail write failed (intent): ", e)),
     Ok(iev) => after_intent(pol, log, exec, intent, iev.id),
+  }
+}
+
+# Like `spend`, but ALSO gates on proof of fulfilment. When `evidence` is given,
+# the gate re-derives a verdict over the named fulfilment trail (release.check)
+# BEFORE the budget check: if the evidence does not verify (tampered, broken
+# chain, or the host's domain spec denies the recorded outcome) the spend is
+# blocked and the executor is never run. `None` behaves exactly like `spend`.
+# This is what "pay only against proof" costs: one re-derivation, no trust in the
+# payer's reported outcome. The budget caps still apply on top.
+fn spend_gated(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendIntent) -> [net] Result[Str, Str], intent :: models.SpendIntent, evidence :: Option[release.Evidence]) -> [sql, time, net] Result[models.SpendOutcome, Str] {
+  match trail.append(log, k_intent(), None, intent_json(intent, pol.token_id)) {
+    Err(e) => Err(str.concat("trail write failed (intent): ", e)),
+    Ok(iev) => match evidence {
+      None => after_intent(pol, log, exec, intent, iev.id),
+      Some(ev) => {
+        let v := release.check(log, ev.trail_id, ev.spec, ev.binding)
+        if v.verified {
+          after_intent(pol, log, exec, intent, iev.id)
+        } else {
+          block(log, iev.id, intent, str.concat("release evidence not verified: ", v.reason))
+        }
+      },
+    },
   }
 }
 
@@ -132,6 +158,20 @@ fn approval_ok(a :: models.HumanApproval, intent :: models.SpendIntent) -> Bool 
 fn deny(log :: trail.Log, parent_id :: Str, intent :: models.SpendIntent, reason :: Str) -> [sql, time] Result[models.SpendOutcome, Str] {
   match trail.append(log, k_denied(), Some(parent_id), denial_json(intent, reason)) {
     Err(e) => Err(str.concat("trail write failed (denied): ", e)),
+    Ok(_) => Ok({ intent: intent, approved: false, executor_ref: "", denial_reason: reason }),
+  }
+}
+
+fn k_blocked() -> Str {
+  "spend.blocked"
+}
+
+# Budget-allowed but fulfilment not proven: recorded to the trail as a distinct
+# `spend.blocked` (kept separate from `spend.denied` so audit can tell a budget
+# refusal from an unproven delivery), executor NOT run.
+fn block(log :: trail.Log, parent_id :: Str, intent :: models.SpendIntent, reason :: Str) -> [sql, time] Result[models.SpendOutcome, Str] {
+  match trail.append(log, k_blocked(), Some(parent_id), denial_json(intent, reason)) {
+    Err(e) => Err(str.concat("trail write failed (blocked): ", e)),
     Ok(_) => Ok({ intent: intent, approved: false, executor_ref: "", denial_reason: reason }),
   }
 }
