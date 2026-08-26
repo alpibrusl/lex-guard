@@ -122,7 +122,7 @@ fn reply(state :: tk.TaskState, text :: Str) -> srv.HandlerOutcome {
 
 # ---- assembly -----------------------------------------------------
 fn make_skill(pol :: models.Policy, log :: trail.Log, exec :: (models.SpendIntent) -> [net] Result[Str, Str]) -> srv.Skill {
-  { capability: authorize_spend_cap(pol), handle: fn (m :: msg.Message) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc] srv.HandlerOutcome {
+  { capability: authorize_spend_cap(pol), handle: fn (m :: msg.Message) -> [io, time, crypto, random, sql, fs_read, fs_write, net, concurrent, llm, proc, approval] srv.HandlerOutcome {
     handle_spend(pol, log, exec, m)
   } }
 }
