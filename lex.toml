@@ -1,7 +1,7 @@
 [package]
 name        = "lex-guard"
 version     = "0.2.0"
-lex         = "0.10.11"
+lex         = "0.10.12"
 description = "Agent spending guardrails: capability-gated budget tokens with attestation trail."
 license     = "EUPL-1.2"
 
