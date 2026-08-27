@@ -85,6 +85,10 @@ fn handler_rejects_bad_request() -> [sql, fs_write, time, net] Result[Unit, Str]
   }
 }
 
+# The exclusion is half the claim, and the half that has teeth. Asking only
+# whether "spend.denied" is PRESENT does not establish that the over-cap spend
+# was refused — a trail carrying both a denial and an escalation would satisfy
+# it, and so would a has_kind that had stopped discriminating between kinds.
 fn handler_attests_denial() -> [sql, fs_write, time, net] Result[Unit, Str] {
   match trail.open_memory() {
     Err(e) => Err(str.concat("open: ", e)),
@@ -92,10 +96,10 @@ fn handler_attests_denial() -> [sql, fs_write, time, net] Result[Unit, Str] {
       let __lex_discard_1 := skill.handle_spend(policy(), log, executor.mock, intent_msg("api.openai.com", 9999))
       match trail.range(log, 0, 9999999999999) {
         Err(e) => Err(str.concat("range: ", e)),
-        Ok(events) => if has_kind(events, "spend.denied") {
+        Ok(events) => if has_kind(events, "spend.denied") and not has_kind(events, "spend.escalated") {
           Ok(())
         } else {
-          Err("over-cap spend was not attested as denied")
+          Err("an over-cap spend must be attested as denied, and must not also appear as escalated")
         },
       }
     },
